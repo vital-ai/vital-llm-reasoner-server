@@ -1,8 +1,12 @@
 import logging
-from typing import Optional
+from typing import Optional, Callable, Awaitable
 import uvloop
+from fastapi.routing import APIRoute
+from fastapi import APIRouter, FastAPI, HTTPException, Request
+
+from pydantic import Field
 from vllm import LLMEngine, AsyncEngineArgs, SamplingParams
-from vllm.entrypoints.openai.api_server import run_server
+from vllm.entrypoints.openai.api_server import run_server, router
 from vllm.entrypoints.openai.cli_args import make_arg_parser, validate_parsed_serve_args
 from vllm.entrypoints.openai.protocol import get_logits_processors, CompletionRequest, ChatCompletionRequest
 from vllm.sampling_params import GuidedDecodingParams, RequestOutputKind
@@ -22,6 +26,30 @@ from vital_llm_reasoner_server.ensemble_worker import get_ensemble_worker
 # but if not the info in the prompt and current generation should be enough to re-build
 # state
 
+# additional JWT field passed in to use with kgraphservice and tool requests
+class VitalCompletionRequest(CompletionRequest):
+    jwt_auth: Optional[str] = Field(default=None, description="JWT authorization")
+
+OriginalFunctionType = Callable[[CompletionRequest, Request], Awaitable[dict]]
+
+original_create_completion: Optional[OriginalFunctionType] = None
+
+async def vital_create_completion(request: VitalCompletionRequest, raw_request: Request):
+
+    user = None
+
+    if request.user:
+        user = request.user
+    else:
+        # generate something?
+        pass
+
+    if request.jwt_auth:
+        print(f"User: {user} : JWT Authorization: {request.jwt_auth}")
+        # assert user --> jwt which can be used downstream by the orchestrator
+
+    if original_create_completion:
+        return await original_create_completion(request, raw_request)
 
 def to_sampling_params(
         self,
@@ -125,20 +153,32 @@ def to_sampling_params(
         allowed_token_ids=self.allowed_token_ids)
 
 
+# this won't work if the LLMEngine is in the back end process
+# original_init = LLMEngine.__init__
+# def patched_init(self, *args, **kwargs):
+#    original_init(self, *args, **kwargs)
+#    engine_list.append(self)
+# LLMEngine.__init__ = patched_init
+
+# TODO patch openai requests to include optional JWT parameter?
+# JWT would be passed to the ensemble orchestrator to use with the ensemble member requests
+
+def patch_create_completion():
+
+    global original_create_completion
+
+    for route in router.routes:
+        if isinstance(route, APIRoute) and route.path == "/v1/completions" and route.methods == {"POST"}:
+
+            original_create_completion = route.endpoint
+            route.endpoint = vital_create_completion
+            route.dependant.dependencies[0].model = VitalCompletionRequest
+            break
 
 def patch_vllm():
 
-    # this won't work if the LLMEngine is in the back end process
-    # original_init = LLMEngine.__init__
-    # def patched_init(self, *args, **kwargs):
-    #    original_init(self, *args, **kwargs)
-    #    engine_list.append(self)
-    # LLMEngine.__init__ = patched_init
-
     CompletionRequest.to_sampling_params = to_sampling_params
-
-# TODO how to patch openai requests to include optional JWT parameter?
-# JWT would be passed to the ensemble orchestrator to use with the ensemble member requests
+    patch_create_completion()
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
