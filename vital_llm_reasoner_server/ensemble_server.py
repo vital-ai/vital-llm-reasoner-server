@@ -25,6 +25,8 @@ from vital_llm_reasoner_server.ensemble_worker import get_ensemble_worker
 # current assumption is that a generation will occur in the same backend process
 # but if not the info in the prompt and current generation should be enough to re-build
 # state
+# however we need a way to pass the JWT string to the backend
+
 
 # additional JWT field passed in to use with kgraphservice and tool requests
 class VitalCompletionRequest(CompletionRequest):
@@ -115,8 +117,30 @@ def to_sampling_params(
     logits_processors = get_logits_processors(self.logits_processors,
                                               logits_processor_pattern)
 
+
+    user = None
+    jwt_auth = None
+
+    # capture info from the request and pass into
+    # the logic processor instance that will process that request
+    # this is better than trying to smoosh things into the prompt
+    # especially if the server backend should know the info but not the LLM
+    # like the jwt token
+    # (which would not make sense to put in the prompt anyway because its long
+    # and would be really bad for security)
+
+    if isinstance(self, CompletionRequest):
+        user = self.user
+
+    if isinstance(self, VitalCompletionRequest):
+        jwt_auth = self.jwt_auth
+
+
     # ensemble_logits_processor = {"qualname": "vital_llm_reasoner_server.ensemble_server.LoggingLogitsProcessor"}
-    ensemble_logits_processor = EnsembleLogitsProcessor()
+    ensemble_logits_processor = EnsembleLogitsProcessor(
+        user=user,
+        jwt_auth=jwt_auth
+    )
 
     if logits_processors:
         logits_processors.append(ensemble_logits_processor)
@@ -162,6 +186,8 @@ def to_sampling_params(
 
 # TODO patch openai requests to include optional JWT parameter?
 # JWT would be passed to the ensemble orchestrator to use with the ensemble member requests
+# if this becomes too messy we can just pass the JWT in the user property
+# potentially in a json string in combination with a user id and other info
 
 def patch_create_completion():
 
@@ -177,7 +203,9 @@ def patch_create_completion():
 
 def patch_vllm():
 
+    # this should apply to VitalCompletionRequest
     CompletionRequest.to_sampling_params = to_sampling_params
+
     patch_create_completion()
 
 if __name__ == "__main__":

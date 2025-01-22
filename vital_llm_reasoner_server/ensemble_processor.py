@@ -11,15 +11,20 @@ search_result = "Jimmy Carter's birthday is: October 1, 1924"
 
 class EnsembleLogitsProcessor:
 
-    def __init__(self):
+    def __init__(self, *, user: str = None, jwt_auth: str = None):
         self.gen_buffer = ""
         self.result_count = 0
+        self.user = user
+        self.jwt_auth = jwt_auth
 
     def __call__(self, prompt_tokens_ids, past_tokens_ids, logits_row):
 
         ensemble_worker = get_ensemble_worker()
 
         tokenizer = ensemble_worker.get_tokenizer()
+
+        # pass self.user and self.jwt_auth to orchestrator
+        # to use with the ensemble member calls for this request
 
         if past_tokens_ids:
 
