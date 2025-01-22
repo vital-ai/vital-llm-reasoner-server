@@ -1,0 +1,13 @@
+# these are handled in docker file
+# numpy
+
+# this is compiled from source
+# vllm>=0.6.6
+
+# this is included in the docker file to override
+# the vllm dependency
+# vital-llm-reasoner[vllm]>=0.0.2
+
+# these are normal dependencies
+uvicorn[standard]==0.27.0.post1
+fastapi==0.109.2

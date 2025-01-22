@@ -1,13 +1,16 @@
-# these are handled in docker file
-# numpy
 
-# this is compiled from source
-# vllm>=0.6.6
 
-# this is included in the docker file to override
-# the vllm dependency
-# vital-llm-reasoner[vllm]>=0.0.2
+# vllm>=0.6.6.post1
 
-# these are normal dependencies
-uvicorn[standard]==0.27.0.post1
-fastapi==0.109.2
+# uvicorn[standard]==0.27.0.post1
+# fastapi==0.109.2
+# transformers>=4.25.1
+torch>=2.5.1
+# accelerate>=0.26.0
+# safetensors
+# requests
+# bitsandbytes>=0.45.0
+
+requests
+transformers
+vital_llm_reasoner>=0.0.2

@@ -2,6 +2,9 @@ version: '3.8'
 
 services:
   app:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
+    # platform: linux/amd64
     ports:
-      - "8033:8033"
+      - "8000:8000"
