@@ -7,7 +7,12 @@ import requests
 --host 0.0.0.0 --port 8000 --model Valdemardi/DeepSeek-R1-Distill-Qwen-32B-AWQ --enforce-eager --gpu-memory-utilization 0.95 --api-key sk-deepseek-testing --max-model-len 8128 --quantization awq_marlin
 """
 
+# Valdemardi/DeepSeek-R1-Distill-Llama-70B-AWQ
+
 url = "https://r9p0430vxvtqp5-8000.proxy.runpod.net/v1/completions"
+
+# url = "http://localhost:11435/v1/completions"
+
 headers = {
     "Authorization": "Bearer sk-deepseek-testing",
     "Content-Type": "application/json",
@@ -76,7 +81,8 @@ prompt = f"{system_message}{user_message}{assistant_message}"
 
 # Request payload
 payload = {
-    "model": "Valdemardi/DeepSeek-R1-Distill-Qwen-32B-AWQ",
+    # "model": "mlx-community/DeepSeek-R1-Distill-Llama-70B-4bit", # "Valdemardi/DeepSeek-R1-Distill-Qwen-32B-AWQ",
+    "model": "mlx-community/DeepSeek-R1-Distill-Qwen-32B-MLX-4Bit",
     "prompt": prompt,
     "max_tokens": 2500,
     "temperature": 0.7,
